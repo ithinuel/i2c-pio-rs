@@ -45,11 +45,13 @@ use embedded_hal::blocking::i2c::{self, AddressMode, Operation, TenBitAddress};
 use fugit::HertzU32;
 use pio::{Instruction, InstructionOperands, SideSet};
 use rp2040_hal::{
+    clocks::SystemClock,
     gpio::{Disabled, DisabledConfig, Function, FunctionConfig, Pin, PinId, ValidPinMode},
     pio::{
         PIOExt, PinDir, PinState, Rx, ShiftDirection, StateMachine, StateMachineIndex, Tx,
         UninitStateMachine, ValidStateMachine, PIO,
     },
+    Clock,
 };
 
 const SC0SD0: Instruction = Instruction {
@@ -129,8 +131,8 @@ where
         scl: rp2040_hal::gpio::Pin<SCL, Disabled<SclDisabledConfig>>,
         sm: UninitStateMachine<(P, SM)>,
         bus_freq: HertzU32,
-        clock_freq: HertzU32,
-    ) -> I2C<'pio, P, (P, SM), SDA, SCL>
+        system_clock: &SystemClock,
+    ) -> Self
     where
         Function<P>: ValidPinMode<SDA> + ValidPinMode<SCL>,
     {
@@ -200,7 +202,7 @@ where
         let wrap_target = installed.wrap_target();
 
         // Configure the PIO state machine.
-        let div = clock_freq.to_Hz() as f32 / ((32 * bus_freq).to_Hz() as f32);
+        let div = Clock::freq(system_clock).to_Hz() as f32 / ((32 * bus_freq).to_Hz() as f32);
 
         // init
         let (mut sm, rx, tx) = rp2040_hal::pio::PIOBuilder::from_program(installed)
